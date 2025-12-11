@@ -1,0 +1,256 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Plugin REDE - Network Analysis
+Módulo de análise e scanning de rede
+"""
+
+import os
+import sys
+import subprocess
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'core'))
+
+from utils_logging import get_logger
+from utils_export import get_exporter
+from utils_network import get_network_utils
+
+def get_module_metadata():
+    """Retorna metadados do módulo"""
+    return {
+        'name': 'REDE',
+        'category': 'REDE',
+        'description': 'Ferramentas de análise e scanning de rede',
+        'version': '1.0.0',
+        'author': 'DM',
+        'tools': [
+            'Ping Sweep',
+            'Port Scanner',
+            'Camera Finder',
+            'LAN Enumeration (ROOT)',
+            'ARP Sniffer (ROOT)'
+        ]
+    }
+
+def run_module(tui_context=None):
+    """Executa o módulo REDE"""
+    logger = get_logger()
+    logger.info("Módulo REDE iniciado")
+    
+    if tui_context is None:
+        return run_cli_mode()
+    
+    return run_tui_mode(tui_context)
+
+def run_cli_mode():
+    """Executa em modo linha de comando"""
+    print("\n" + "="*60)
+    print("  REDE Module - DM Pentest")
+    print("="*60 + "\n")
+    
+    print("Ferramentas disponíveis:")
+    print("  1) Ping Sweep")
+    print("  2) Port Scanner")
+    print("  3) Camera Finder")
+    print("  4) LAN Enumeration (requer ROOT)")
+    print("  5) ARP Sniffer (requer ROOT)")
+    print("  0) Voltar")
+    
+    choice = input("\nEscolha uma opção: ").strip()
+    
+    if choice == '1':
+        network = input("Digite a rede (ex: 192.168.1.0/24): ").strip()
+        run_ping_sweep(network)
+    elif choice == '2':
+        target = input("Digite o IP alvo: ").strip()
+        run_port_scan(target)
+    elif choice == '3':
+        network = input("Digite a rede (ex: 192.168.1.0/24): ").strip()
+        run_camera_finder(network)
+    elif choice == '4':
+        network = input("Digite a rede (ex: 192.168.1.0/24 ou 'auto'): ").strip()
+        run_lan_enum(network)
+    elif choice == '5':
+        interface = input("Digite a interface (ex: wlan0): ").strip()
+        duration = input("Duração em segundos (padrão: 60): ").strip() or "60"
+        run_arp_sniffer(interface, duration)
+    elif choice == '0':
+        return
+    else:
+        print("Opção inválida!")
+
+def run_tui_mode(tui_context):
+    """Executa em modo TUI"""
+    return {
+        'tools': [
+            {
+                'name': 'Ping Sweep',
+                'action': run_ping_sweep,
+                'params': ['network'],
+                'requires_root': False
+            },
+            {
+                'name': 'Port Scanner',
+                'action': run_port_scan,
+                'params': ['target'],
+                'requires_root': False
+            },
+            {
+                'name': 'Camera Finder',
+                'action': run_camera_finder,
+                'params': ['network'],
+                'requires_root': False
+            },
+            {
+                'name': 'LAN Enumeration',
+                'action': run_lan_enum,
+                'params': ['network'],
+                'requires_root': True
+            },
+            {
+                'name': 'ARP Sniffer',
+                'action': run_arp_sniffer,
+                'params': ['interface', 'duration'],
+                'requires_root': True
+            }
+        ]
+    }
+
+def run_ping_sweep(network):
+    """Executa ping sweep"""
+    logger = get_logger()
+    logger.info(f"Executando Ping Sweep: {network}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'ping_sweep.sh'
+    
+    try:
+        result = subprocess.run(
+            ['bash', str(tool_path), network],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('Ping Sweep', {'network': network}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('Ping Sweep', {'network': network}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar Ping Sweep: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_port_scan(target, ports='common'):
+    """Executa port scan"""
+    logger = get_logger()
+    logger.info(f"Executando Port Scan: {target}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'portscan_basic.py'
+    
+    try:
+        result = subprocess.run(
+            ['python3', str(tool_path), target, '--ports', ports],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('Port Scan', {'target': target, 'ports': ports}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('Port Scan', {'target': target}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar Port Scan: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_camera_finder(network):
+    """Executa camera finder"""
+    logger = get_logger()
+    logger.info(f"Executando Camera Finder: {network}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'camera_finder.sh'
+    
+    try:
+        result = subprocess.run(
+            ['bash', str(tool_path), network],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('Camera Finder', {'network': network}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('Camera Finder', {'network': network}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar Camera Finder: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_lan_enum(network='auto'):
+    """Executa LAN enumeration (ROOT)"""
+    logger = get_logger()
+    logger.info(f"Executando LAN Enumeration: {network}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'root-tools' / 'lan_enum_root.sh'
+    
+    try:
+        result = subprocess.run(
+            ['bash', str(tool_path), network],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('LAN Enumeration', {'network': network}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('LAN Enumeration', {'network': network}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar LAN Enumeration: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_arp_sniffer(interface='wlan0', duration='60'):
+    """Executa ARP sniffer (ROOT)"""
+    logger = get_logger()
+    logger.info(f"Executando ARP Sniffer: {interface} por {duration}s")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'root-tools' / 'arp_sniffer_root.sh'
+    
+    try:
+        result = subprocess.run(
+            ['bash', str(tool_path), interface, duration],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('ARP Sniffer', {'interface': interface, 'duration': duration}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('ARP Sniffer', {'interface': interface}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar ARP Sniffer: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+if __name__ == '__main__':
+    run_module()

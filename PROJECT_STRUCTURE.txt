@@ -1,0 +1,60 @@
+.
+├── CONTRIBUTING.md
+├── INSTALL.md
+├── LICENSE
+├── PROJECT_STRUCTURE.txt
+├── README.md
+├── ROADMAP.md
+├── TODO.md
+├── assets
+│   ├── TOOLS_REFERENCE.md
+│   ├── banners
+│   ├── logos
+│   └── screenshots
+├── config
+│   ├── README.md
+│   ├── settings.json
+│   └── themes.json
+├── core
+│   ├── README.md
+│   ├── plugins
+│   │   ├── automation
+│   │   ├── exploit
+│   │   ├── forensic
+│   │   ├── osint
+│   │   ├── rede
+│   │   └── web
+│   ├── tui
+│   └── utils
+│       ├── modules_loader.py
+│       ├── tui_main.py
+│       ├── utils_export.py
+│       ├── utils_logging.py
+│       └── utils_network.py
+├── docs
+│   ├── README.md
+│   ├── api
+│   ├── contributing
+│   └── guides
+├── examples
+│   └── EXAMPLE_NETWORK_SCAN.md
+├── init.sh
+├── logs
+├── output
+│   ├── csv
+│   └── json
+├── requirements.txt
+├── scripts
+├── tests
+└── tools
+    ├── README.md
+    ├── automation
+    ├── exploit
+    ├── forensic
+    ├── network
+    │   ├── no-root-tools
+    │   └── root-tools
+    ├── osint
+    └── web
+
+35 directories, 22 files

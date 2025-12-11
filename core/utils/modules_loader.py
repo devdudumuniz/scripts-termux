@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+DM Termux Pentest - Modules Loader
+Sistema de carregamento dinâmico de plugins/módulos
+"""
+
+import os
+import sys
+import json
+import importlib.util
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+
+class ModuleLoader:
+    """Carregador dinâmico de módulos/plugins"""
+    
+    def __init__(self, plugins_dir: str = "plugins", 
+                 config_path: str = "config/settings.json"):
+        self.plugins_dir = Path(plugins_dir)
+        self.config_path = Path(config_path)
+        self.modules = {}
+        self.config = self._load_config()
+        
+        # Adicionar diretório de plugins ao path
+        if str(self.plugins_dir.absolute()) not in sys.path:
+            sys.path.insert(0, str(self.plugins_dir.absolute()))
+    
+    def _load_config(self) -> Dict[str, Any]:
+        """Carrega configurações"""
+        try:
+            with open(self.config_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {"plugins": {}}
+    
+    def discover_modules(self) -> List[str]:
+        """
+        Descobre todos os módulos disponíveis
+        
+        Returns:
+            Lista de nomes de módulos descobertos
+        """
+        discovered = []
+        
+        if not self.plugins_dir.exists():
+            return discovered
+        
+        # Procurar por diretórios de plugins
+        for item in self.plugins_dir.iterdir():
+            if item.is_dir() and not item.name.startswith('_'):
+                # Verificar se tem arquivo principal
+                main_file = item / f"{item.name}_main.py"
+                if main_file.exists():
+                    discovered.append(item.name)
+        
+        return discovered
+    
+    def load_module(self, module_name: str) -> Optional[Any]:
+        """
+        Carrega um módulo específico
+        
+        Args:
+            module_name: Nome do módulo (ex: 'osint', 'web')
+            
+        Returns:
+            Módulo carregado ou None se falhar
+        """
+        # Verificar se está habilitado na config
+        plugin_config = self.config.get("plugins", {}).get(module_name, {})
+        if not plugin_config.get("enabled", True):
+            return None
+        
+        # Caminho do arquivo principal do módulo
+        module_path = self.plugins_dir / module_name / f"{module_name}_main.py"
+        
+        if not module_path.exists():
+            return None
+        
+        try:
+            # Carregar módulo dinamicamente
+            spec = importlib.util.spec_from_file_location(
+                f"plugins.{module_name}",
+                module_path
+            )
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Armazenar módulo carregado
+            self.modules[module_name] = module
+            
+            return module
+        
+        except Exception as e:
+            print(f"Erro ao carregar módulo {module_name}: {e}")
+            return None
+    
+    def load_all_modules(self) -> Dict[str, Any]:
+        """
+        Carrega todos os módulos descobertos
+        
+        Returns:
+            Dicionário com módulos carregados
+        """
+        discovered = self.discover_modules()
+        
+        for module_name in discovered:
+            self.load_module(module_name)
+        
+        return self.modules
+    
+    def get_module(self, module_name: str) -> Optional[Any]:
+        """
+        Retorna um módulo carregado
+        
+        Args:
+            module_name: Nome do módulo
+            
+        Returns:
+            Módulo ou None se não carregado
+        """
+        return self.modules.get(module_name)
+    
+    def get_module_metadata(self, module_name: str) -> Optional[Dict[str, Any]]:
+        """
+        Obtém metadados de um módulo
+        
+        Args:
+            module_name: Nome do módulo
+            
+        Returns:
+            Dicionário com metadados ou None
+        """
+        module = self.get_module(module_name)
+        
+        if module and hasattr(module, 'get_module_metadata'):
+            return module.get_module_metadata()
+        
+        return None
+    
+    def list_modules(self) -> List[Dict[str, Any]]:
+        """
+        Lista todos os módulos com suas informações
+        
+        Returns:
+            Lista de dicionários com informações dos módulos
+        """
+        modules_info = []
+        
+        for module_name, module in self.modules.items():
+            info = {
+                'name': module_name,
+                'loaded': True,
+                'enabled': True
+            }
+            
+            # Adicionar metadados se disponível
+            metadata = self.get_module_metadata(module_name)
+            if metadata:
+                info.update(metadata)
+            
+            modules_info.append(info)
+        
+        return modules_info
+    
+    def run_module(self, module_name: str, context: Any = None) -> Any:
+        """
+        Executa um módulo
+        
+        Args:
+            module_name: Nome do módulo
+            context: Contexto de execução (TUI, parâmetros, etc.)
+            
+        Returns:
+            Resultado da execução do módulo
+        """
+        module = self.get_module(module_name)
+        
+        if not module:
+            # Tentar carregar se não estiver carregado
+            module = self.load_module(module_name)
+        
+        if module and hasattr(module, 'run_module'):
+            return module.run_module(context)
+        
+        return None
+    
+    def reload_module(self, module_name: str) -> Optional[Any]:
+        """
+        Recarrega um módulo
+        
+        Args:
+            module_name: Nome do módulo
+            
+        Returns:
+            Módulo recarregado ou None
+        """
+        # Remover módulo atual
+        if module_name in self.modules:
+            del self.modules[module_name]
+        
+        # Recarregar
+        return self.load_module(module_name)
+    
+    def enable_module(self, module_name: str):
+        """Habilita um módulo na configuração"""
+        if "plugins" not in self.config:
+            self.config["plugins"] = {}
+        
+        if module_name not in self.config["plugins"]:
+            self.config["plugins"][module_name] = {}
+        
+        self.config["plugins"][module_name]["enabled"] = True
+        self._save_config()
+    
+    def disable_module(self, module_name: str):
+        """Desabilita um módulo na configuração"""
+        if "plugins" not in self.config:
+            self.config["plugins"] = {}
+        
+        if module_name not in self.config["plugins"]:
+            self.config["plugins"][module_name] = {}
+        
+        self.config["plugins"][module_name]["enabled"] = False
+        self._save_config()
+    
+    def _save_config(self):
+        """Salva configurações no arquivo"""
+        try:
+            with open(self.config_path, 'w', encoding='utf-8') as f:
+                json.dump(self.config, f, indent=2, ensure_ascii=False)
+        except Exception as e:
+            print(f"Erro ao salvar configuração: {e}")
+
+
+# Instância global
+_loader_instance = None
+
+def get_loader() -> ModuleLoader:
+    """Retorna instância global do ModuleLoader"""
+    global _loader_instance
+    if _loader_instance is None:
+        _loader_instance = ModuleLoader()
+    return _loader_instance

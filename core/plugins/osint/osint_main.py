@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Plugin OSINT - Open Source Intelligence
+Módulo de coleta de informações públicas
+"""
+
+import os
+import sys
+import subprocess
+from pathlib import Path
+
+# Adicionar core ao path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'core'))
+
+from utils_logging import get_logger
+from utils_export import get_exporter
+
+def get_module_metadata():
+    """Retorna metadados do módulo"""
+    return {
+        'name': 'OSINT',
+        'category': 'OSINT',
+        'description': 'Ferramentas de coleta de informações públicas (IP, domínio, email, telefone)',
+        'version': '1.0.0',
+        'author': 'DM',
+        'tools': [
+            'IP Lookup',
+            'Domain Lookup',
+            'Email Validation',
+            'Phone Analysis'
+        ]
+    }
+
+def run_module(tui_context=None):
+    """
+    Executa o módulo OSINT
+    
+    Args:
+        tui_context: Contexto da TUI (se disponível)
+    """
+    logger = get_logger()
+    exporter = get_exporter()
+    
+    logger.info("Módulo OSINT iniciado")
+    
+    # Se não há contexto TUI, executar em modo CLI
+    if tui_context is None:
+        return run_cli_mode()
+    
+    # Modo TUI
+    return run_tui_mode(tui_context)
+
+def run_cli_mode():
+    """Executa em modo linha de comando"""
+    print("\n" + "="*60)
+    print("  OSINT Module - DM Pentest")
+    print("="*60 + "\n")
+    
+    print("Ferramentas disponíveis:")
+    print("  1) IP Lookup")
+    print("  2) Domain Lookup")
+    print("  3) Email Validation")
+    print("  4) Phone Analysis")
+    print("  0) Voltar")
+    
+    choice = input("\nEscolha uma opção: ").strip()
+    
+    if choice == '1':
+        target = input("Digite o IP: ").strip()
+        run_ip_lookup(target)
+    elif choice == '2':
+        target = input("Digite o domínio: ").strip()
+        run_domain_lookup(target)
+    elif choice == '3':
+        target = input("Digite o email: ").strip()
+        run_email_validation(target)
+    elif choice == '4':
+        target = input("Digite o telefone: ").strip()
+        run_phone_analysis(target)
+    elif choice == '0':
+        return
+    else:
+        print("Opção inválida!")
+
+def run_tui_mode(tui_context):
+    """Executa em modo TUI"""
+    # Interface será gerenciada pela TUI principal
+    return {
+        'tools': [
+            {
+                'name': 'IP Lookup',
+                'action': run_ip_lookup,
+                'params': ['ip']
+            },
+            {
+                'name': 'Domain Lookup',
+                'action': run_domain_lookup,
+                'params': ['domain']
+            },
+            {
+                'name': 'Email Validation',
+                'action': run_email_validation,
+                'params': ['email']
+            },
+            {
+                'name': 'Phone Analysis',
+                'action': run_phone_analysis,
+                'params': ['phone']
+            }
+        ]
+    }
+
+def run_ip_lookup(ip):
+    """Executa lookup de IP"""
+    logger = get_logger()
+    logger.info(f"Executando IP Lookup: {ip}")
+    
+    # Caminho para ferramenta
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'simple_osint.py'
+    
+    try:
+        result = subprocess.run(
+            ['python3', str(tool_path), 'ip', ip],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('IP Lookup', {'ip': ip}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('IP Lookup', {'ip': ip}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar IP Lookup: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_domain_lookup(domain):
+    """Executa lookup de domínio"""
+    logger = get_logger()
+    logger.info(f"Executando Domain Lookup: {domain}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'simple_osint.py'
+    
+    try:
+        result = subprocess.run(
+            ['python3', str(tool_path), 'domain', domain],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('Domain Lookup', {'domain': domain}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('Domain Lookup', {'domain': domain}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar Domain Lookup: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_email_validation(email):
+    """Executa validação de email"""
+    logger = get_logger()
+    logger.info(f"Executando Email Validation: {email}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'simple_osint.py'
+    
+    try:
+        result = subprocess.run(
+            ['python3', str(tool_path), 'email', email],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('Email Validation', {'email': email}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('Email Validation', {'email': email}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar Email Validation: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+def run_phone_analysis(phone):
+    """Executa análise de telefone"""
+    logger = get_logger()
+    logger.info(f"Executando Phone Analysis: {phone}")
+    
+    tool_path = Path(__file__).parent.parent.parent / 'no-root-tools' / 'simple_osint.py'
+    
+    try:
+        result = subprocess.run(
+            ['python3', str(tool_path), 'phone', phone],
+            capture_output=True,
+            text=True
+        )
+        
+        print(result.stdout)
+        
+        if result.returncode == 0:
+            logger.log_execution('Phone Analysis', {'phone': phone}, status='success')
+            return {'status': 'success', 'output': result.stdout}
+        else:
+            logger.log_execution('Phone Analysis', {'phone': phone}, status='error', error=result.stderr)
+            return {'status': 'error', 'output': result.stderr}
+    
+    except Exception as e:
+        logger.error(f"Erro ao executar Phone Analysis: {e}")
+        return {'status': 'error', 'error': str(e)}
+
+if __name__ == '__main__':
+    # Executar em modo standalone
+    run_module()
